@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>다항식 빈출 (6)</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #fff;
+      color: #000;
+      margin: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    #startScreen, #gameScreen, #gameOverScreen {
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    input[type="text"] {
+      font-size: 16px;
+      padding: 5px;
+    }
+    .difficulty {
+      margin: 10px;
+    }
+    button {
+      font-size: 16px;
+      padding: 8px 16px;
+      margin: 10px;
+      cursor: pointer;
+    }
+    #header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    #energyBarContainer {
+      width: 100%;
+      height: 20px;
+      background-color: #eee;
+      border: 1px solid #000;
+      margin-bottom: 15px;
+    }
+    #energyBar {
+      height: 100%;
+      background-color: #000;
+      width: 100%;
+    }
+    .choiceButton {
+      display: block;
+      width: 90%;
+      margin: 6px auto;
+      padding: 8px;
+      border: 1px solid #000;
+      background-color: #fff;
+      cursor: pointer;
+    }
+    .disabled {
+      background-color: #ddd;
+      cursor: default;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+</head>
+<body>
+  <h1>다항식 빈출 (6)</h1>
+
+  <!-- 시작 화면 -->
+  <div id="startScreen">
+    <h2>게임 시작</h2>
+    <p>
+      이름: <input type="text" id="playerName" placeholder="이름을 입력하세요" />
+    </p>
+    <p class="difficulty">
+      난이도 선택:
+      <label><input type="radio" name="difficulty" value="최상" /> 최상</label>
+      <label><input type="radio" name="difficulty" value="상" /> 상</label>
+      <label><input type="radio" name="difficulty" value="중" /> 중</label>
+      <label><input type="radio" name="difficulty" value="하" /> 하</label>
+    </p>
+    <button id="startButton">시작</button>
+  </div>
+
+  <!-- 게임 화면 -->
+  <div id="gameScreen" style="display:none;">
+    <div id="header">
+      <div>총 시간: <span id="overallTime">0</span>초</div>
+      <div>점수: <span id="score">0</span></div>
+      <div>남은 기회: <span id="lives">3</span></div>
+    </div>
+    <div id="energyBarContainer" style="display:none;">
+      <div id="energyBar"></div>
+    </div>
+    <div id="questionArea"></div>
+    <div id="feedbackArea"></div>
+    <button id="nextButton" disabled>다음 문제</button>
+  </div>
+
+  <!-- 게임 오버 화면 -->
+  <div id="gameOverScreen" style="display:none;">
+    <h2>게임 오버</h2>
+    <p>최종 점수: <span id="finalScore">0</span></p>
+    <p>총 플레이 시간: <span id="finalTime">0</span>초</p>
+    <button id="sendScoreButton">점수전송</button>
+    <pre id="response"></pre>
+  </div>
+
+  <script>
+    // 문제 데이터 (총 17문제)
+    const problems = [
+      // [유형 A: 계수의 합]
+      {
+        question: "다항식 \\((x^2 - 2x - 1)^4\\)의 전개식에서 \\(상수항\\)을 제외한 모든 계수의 합은?",
+        choices: [
+          { text: "15", correct: true },
+          { text: "16", correct: false },
+          { text: "17", correct: false },
+          { text: "18", correct: false },
+          { text: "19", correct: false }
+        ]
+      },
+      {
+        question: "다항식 \\((x^2 - x - 1)^4\\)의 전개식에서 \\(상수항\\)을 제외한 모든 계수의 합은?",
+        choices: [
+          { text: "0", correct: true },
+          { text: "1", correct: false },
+          { text: "2", correct: false },
+          { text: "3", correct: false },
+          { text: "4", correct: false }
+        ]
+      },
+      {
+        question: "다항식 \\((x^2 - 2x - 2)^4\\)의 전개식에서 \\(상수항\\)을 제외한 모든 계수의 합은?",
+        choices: [
+          { text: "63", correct: false },
+          { text: "64", correct: false },
+          { text: "65", correct: true },
+          { text: "66", correct: false },
+          { text: "67", correct: false }
+        ]
+      },
+      {
+        question: "다항식 \\((x^2 - 3x - 1)^4\\)의 전개식에서 \\(상수항\\)을 제외한 모든 계수의 합은?",
+        choices: [
+          { text: "78", correct: false },
+          { text: "79", correct: false },
+          { text: "80", correct: true },
+          { text: "81", correct: false },
+          { text: "82", correct: false }
+        ]
+      },
+      {
+        question: "다항식 \\((x^2 - 2x - 1)^2\\)의 전개식에서 \\(상수항\\)을 제외한 모든 계수의 합은?",
+        choices: [
+          { text: "2", correct: false },
+          { text: "3", correct: true },
+          { text: "4", correct: false },
+          { text: "5", correct: false },
+          { text: "6", correct: false }
+        ]
+      },
+      // [유형 B: 방정식 활용]
+      {
+        question: "\\(x^2 + x + 1 = 0\\)일 때, \\(x^2 - 2x + 4 - \\dfrac{2}{x} + \\dfrac{1}{x^2}\\)의 값은?",
+        choices: [
+          { text: "4", correct: false },
+          { text: "5", correct: true },
+          { text: "6", correct: false },
+          { text: "7", correct: false },
+          { text: "8", correct: false }
+        ]
+      },
+      {
+        question: "\\(x^2 + 3x + 1 = 0\\)일 때, \\(x^2 - 4x + 7 - \\dfrac{4}{x} + \\dfrac{1}{x^2}\\)의 값은?",
+        choices: [
+          { text: "24", correct: false },
+          { text: "25", correct: false },
+          { text: "26", correct: true },
+          { text: "27", correct: false },
+          { text: "28", correct: false }
+        ]
+      },
+      {
+        question: "\\(x^2 - x + 1 = 0\\)일 때, \\(x^2 + 2x + 4 + \\dfrac{2}{x} + \\dfrac{1}{x^2}\\)의 값은?",
+        choices: [
+          { text: "5", correct: true },
+          { text: "6", correct: false },
+          { text: "7", correct: false },
+          { text: "8", correct: false },
+          { text: "9", correct: false }
+        ]
+      },
+      {
+        question: "\\(x^2 + 0x + 1 = 0\\)일 때, \\(x^2 + 2x + 4 + \\dfrac{2}{x} + \\dfrac{1}{x^2}\\)의 값은?",
+        choices: [
+          { text: "1", correct: false },
+          { text: "2", correct: true },
+          { text: "3", correct: false },
+          { text: "4", correct: false },
+          { text: "5", correct: false }
+        ]
+      },
+      {
+        question: "\\(x^2 + 4x + 1 = 0\\)일 때, \\(x^2 - 5x + 8 - \\dfrac{5}{x} + \\dfrac{1}{x^2}\\)의 값은?",
+        choices: [
+          { text: "40", correct: false },
+          { text: "41", correct: false },
+          { text: "42", correct: true },
+          { text: "43", correct: false },
+          { text: "44", correct: false }
+        ]
+      },
+      // [유형 C: 함수 치환]
+      {
+        question: "임의의 실수 \\(x\\)에 대하여 \\(f(x^2 - x) = x^2 f(x) - 2x + 1\\)을 만족하는 다항식 \\(f(x)\\)가 있다. \\(f(x)\\)를 \\((x-2)\\)로 나누었을 때의 나머지는?",
+        choices: [
+          { text: "1", correct: true },
+          { text: "2", correct: false },
+          { text: "3", correct: false },
+          { text: "4", correct: false },
+          { text: "5", correct: false }
+        ]
+      },
+      {
+        question: "임의의 실수 \\(x\\)에 대하여 \\(f(x^2 - x) = x^2 f(x) + 2x - 1\\)을 만족하는 다항식 \\(f(x)\\)가 있다. \\(f(x)\\)를 \\((x-2)\\)로 나누었을 때의 나머지는?",
+        choices: [
+          { text: "-3", correct: false },
+          { text: "-2", correct: false },
+          { text: "-1", correct: true },
+          { text: "0", correct: false },
+          { text: "1", correct: false }
+        ]
+      },
+      {
+        question: "임의의 실수 \\(x\\)에 대하여 \\(f(x^2 - x) = x^2 f(x) + 4x - 2\\)를 만족하는 다항식 \\(f(x)\\)가 있다. \\(f(x)\\)를 \\((x-2)\\)로 나누었을 때의 나머지는?",
+        choices: [
+          { text: "-4", correct: false },
+          { text: "-3", correct: false },
+          { text: "-2", correct: true },
+          { text: "-1", correct: false },
+          { text: "0", correct: false }
+        ]
+      },
+      {
+        question: "임의의 실수 \\(x\\)에 대하여 \\(f(x^2 - x) = x^2 f(x) - 4x + 2\\)를 만족하는 다항식 \\(f(x)\\)가 있다. \\(f(x)\\)를 \\((x-2)\\)로 나누었을 때의 나머지는?",
+        choices: [
+          { text: "0", correct: false },
+          { text: "1", correct: false },
+          { text: "2", correct: true },
+          { text: "3", correct: false },
+          { text: "4", correct: false }
+        ]
+      },
+      {
+        question: "임의의 실수 \\(x\\)에 대하여 \\(f(x^2 - x) = x^2 f(x) + 6x - 3\\)을 만족하는 다항식 \\(f(x)\\)가 있다. \\(f(x)\\)를 \\((x-2)\\)로 나누었을 때의 나머지는?",
+        choices: [
+          { text: "-5", correct: false },
+          { text: "-4", correct: false },
+          { text: "-3", correct: true },
+          { text: "-2", correct: false },
+          { text: "-1", correct: false }
+        ]
+      },
+      // [유형 D: 모듈러 산술] (계산량 줄이기 위해 2문제로 축소)
+      {
+        question: "다음 식을 \\(125\\)로 나누었을 때의 나머지는? \\(2^{20} - 2^{16} + 2^8 + 2^4\\)",
+        choices: [
+          { text: "60", correct: false },
+          { text: "61", correct: false },
+          { text: "62", correct: true },
+          { text: "63", correct: false },
+          { text: "64", correct: false }
+        ]
+      },
+      {
+        question: "다음 식을 \\(125\\)로 나누었을 때의 나머지는? \\(2^{25} + 2^{15} + 2^5\\)",
+        choices: [
+          { text: "105", correct: false },
+          { text: "106", correct: false },
+          { text: "107", correct: true },
+          { text: "108", correct: false },
+          { text: "109", correct: false }
+        ]
+      }
+    ];
+
+    // 전역 변수들
+    let currentProblem = null;
+    let problemPool = []; // 문제들을 무작위 섞은 배열
+    let score = 0;
+    let lives = 3;
+    let overallSeconds = 0;
+    let questionTimer = null;
+    let overallTimer = null;
+    let timeLimit = 0; // 해당 난이도의 문제 제한 시간 (초); 하일 경우 0(제한없음)
+    let scorePerQuestion = 0;
+    let answerChosen = false;
+
+    // 난이도에 따른 설정
+    const settings = {
+      "최상": { timeLimit: 20, score: 20 },
+      "상": { timeLimit: 30, score: 15 },
+      "중": { timeLimit: 40, score: 13 },
+      "하": { timeLimit: 0,  score: 10 }
+    };
+
+    // shuffleArray 함수
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    // 시작 버튼 이벤트 리스너
+    document.getElementById("startButton").addEventListener("click", function() {
+      const nameInput = document.getElementById("playerName").value.trim();
+      const diffEls = document.getElementsByName("difficulty");
+      let diffValue = "";
+      for (const el of diffEls) {
+        if (el.checked) { diffValue = el.value; break; }
+      }
+      if (nameInput === "" || diffValue === "") {
+        alert("이름과 난이도를 선택하세요.");
+        return;
+      }
+      // 난이도 설정 적용
+      timeLimit = settings[diffValue].timeLimit;
+      scorePerQuestion = settings[diffValue].score;
+      // 초기화
+      score = 0;
+      lives = 3;
+      overallSeconds = 0;
+      answerChosen = false;
+      // 문제 배열 섞기
+      problemPool = problems.slice();
+      shuffleArray(problemPool);
+      // 화면 전환
+      document.getElementById("startScreen").style.display = "none";
+      document.getElementById("gameScreen").style.display = "block";
+      if (timeLimit > 0) {
+        document.getElementById("energyBarContainer").style.display = "block";
+      } else {
+        document.getElementById("energyBarContainer").style.display = "none";
+      }
+      // 타이머 시작
+      overallTimer = setInterval(function(){
+        overallSeconds++;
+        document.getElementById("overallTime").innerText = overallSeconds;
+      }, 1000);
+      loadNextProblem();
+    });
+
+    // 문제 로드 함수
+    function loadNextProblem() {
+      answerChosen = false;
+      document.getElementById("feedbackArea").innerHTML = "";
+      document.getElementById("nextButton").disabled = true;
+      // 문제 풀이가 소진되었으면 문제 배열 재섞기
+      if (problemPool.length === 0) {
+        problemPool = problems.slice();
+        shuffleArray(problemPool);
+      }
+      currentProblem = problemPool.pop();
+      // 보기를 섞음
+      const choicesCopy = currentProblem.choices.slice();
+      shuffleArray(choicesCopy);
+      // 문제 출력
+      let html = "<p>" + currentProblem.question + "</p>";
+      choicesCopy.forEach(function(choice, index) {
+        html += `<button class="choiceButton" data-index="${index}">${choice.text}</button>`;
+      });
+      document.getElementById("questionArea").innerHTML = html;
+      MathJax.typeset();
+      // 선택 버튼 이벤트 등록
+      const buttons = document.getElementsByClassName("choiceButton");
+      for (const btn of buttons) {
+        btn.addEventListener("click", selectAnswer);
+      }
+      // 에너지바 초기화 및 타이머 시작 (시간 제한이 있을 때)
+      if (timeLimit > 0) {
+        startQuestionTimer();
+      }
+    }
+
+    // 문제 타이머 및 에너지바
+    function startQuestionTimer() {
+      const energyBar = document.getElementById("energyBar");
+      energyBar.style.width = "100%";
+      let timeLeft = timeLimit;
+      const interval = 50; // ms
+      const totalMs = timeLimit * 1000;
+      let elapsed = 0;
+      if (questionTimer) clearInterval(questionTimer);
+      questionTimer = setInterval(function() {
+        elapsed += interval;
+        const percent = Math.max(100 - (elapsed / totalMs) * 100, 0);
+        energyBar.style.width = percent + "%";
+        if (elapsed >= totalMs) {
+          clearInterval(questionTimer);
+          // 시간 초과 시 답변 미선택 상태에서 오답 처리
+          if (!answerChosen) {
+            processAnswer(null, true);
+          }
+        }
+      }, interval);
+    }
+
+    // 답변 선택 이벤트 핸들러
+    function selectAnswer(e) {
+      if (answerChosen) return;
+      answerChosen = true;
+      if (questionTimer) clearInterval(questionTimer);
+      const selectedIndex = parseInt(e.currentTarget.getAttribute("data-index"));
+      // 버튼의 innerText를 이용하여 정답 판별
+      let chosenCorrect = false;
+      for (const choice of currentProblem.choices) {
+        if (choice.text === e.currentTarget.innerText && choice.correct) {
+          chosenCorrect = true;
+          break;
+        }
+      }
+      processAnswer(chosenCorrect, false);
+    }
+
+    // 답변 처리 함수: timedOut이 true이면 시간초과
+    function processAnswer(isCorrect, timedOut) {
+      const feedback = document.getElementById("feedbackArea");
+      const correctChoices = currentProblem.choices.filter(c => c.correct).map(c => c.text).join(", ");
+      if (timedOut) {
+        feedback.innerHTML = "<p>시간 초과! 정답: " + correctChoices + "</p>";
+        lives--;
+      } else {
+        if (isCorrect) {
+          feedback.innerHTML = "<p>정답!</p>";
+          score += scorePerQuestion;
+        } else {
+          feedback.innerHTML = "<p>오답! 정답: " + correctChoices + "</p>";
+          lives--;
+        }
+      }
+      document.getElementById("score").innerText = score;
+      document.getElementById("lives").innerText = lives;
+      const btns = document.getElementsByClassName("choiceButton");
+      for (const btn of btns) {
+        btn.classList.add("disabled");
+        btn.disabled = true;
+      }
+      document.getElementById("nextButton").disabled = false;
+      MathJax.typeset();
+      if (lives <= 0) {
+        endGame();
+      }
+    }
+
+    // 다음 문제 버튼 이벤트
+    document.getElementById("nextButton").addEventListener("click", function() {
+      if (lives <= 0) return;
+      loadNextProblem();
+    });
+
+    // 게임 종료 함수
+    function endGame() {
+      clearInterval(overallTimer);
+      if (questionTimer) clearInterval(questionTimer);
+      document.getElementById("gameScreen").style.display = "none";
+      document.getElementById("gameOverScreen").style.display = "block";
+      document.getElementById("finalScore").innerText = score;
+      document.getElementById("finalTime").innerText = overallSeconds;
+    }
+
+    // 점수 전송 함수 (제공 코드)
+    function saveData(game, name, score, elapsedTime) {
+      const FUNCTION_URL = "https://us-central1-record-f420d.cloudfunctions.net/report";
+      const requestData = {
+          game,
+          name,
+          score: parseInt(score, 10),
+          elapsedTime: parseInt(elapsedTime, 10)
+      };
+      try {
+          const response = fetch(FUNCTION_URL, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(requestData)
+          });
+          response.then(res => {
+            return res.json().then(responseData => {
+              if (res.ok) {
+                document.getElementById('response').innerText = 
+                    "성공: " + JSON.stringify(responseData, null, 2);
+              } else {
+                document.getElementById('response').innerText = 
+                    "오류: " + JSON.stringify(responseData, null, 2);
+              }
+            });
+          }).catch(error => {
+            console.error('요청 실패:', error);
+            document.getElementById('response').innerText = 
+                "네트워크 오류: " + error.message;
+          });
+      } catch (error) {
+          console.error('요청 실패:', error);
+          document.getElementById('response').innerText = 
+              "네트워크 오류: " + error.message;
+      }
+    }
+
+    // 점수전송 버튼 이벤트
+    document.getElementById("sendScoreButton").addEventListener("click", function() {
+      const playerName = document.getElementById("playerName").value.trim();
+      saveData("다항식 빈출 (6)", playerName, score, overallSeconds);
+    });
+  </script>
+</body>
+</html>
